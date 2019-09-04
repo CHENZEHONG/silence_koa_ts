@@ -1,21 +1,42 @@
 import * as Koa from "koa2";
 import * as Router from "koa-router";
 import * as Json from "koa-json";
-import * as Bodyparser from 'koa-bodyparser';
+import * as BodyParser from 'koa-bodyparser';
+import * as Static from 'koa-static';
 import AppRoutes from './routes/Router';
+import {tokenCheck} from './middleware/tokenCheck';
 
-const app = new Koa();
-const router = new Router();
 
-const port = process.env.port || 3000;
-const hostname = process.env.host || '127.0.0.1';
+export class App {
+    private app: Koa;
+    private router: Router;
 
-// AppRoutes.forEach(route => router[route.method](route.path, route.action));
-app.use(Json());
-app.use(Bodyparser());
-app.use(AppRoutes.routes()).use(router.allowedMethods());
-// app.use(router.routes()).use(router.allowedMethods());
+    constructor(private port?: number | string) {
+        this.app = new Koa();
+        this.router = new Router();
+        this.settings();
+        this.middlewares();
+        this.routes();
+    }
 
-app.listen(port, () => {
-    console.log(`koa start ${hostname}:${port}`);
-});
+    private settings(): void {
+        this.port = this.port || process.env.port || 3000
+    }
+
+    private middlewares(): void {
+        this.app.use(Json());
+        this.app.use(BodyParser());
+        this.app.use(Static(__dirname + '/static'));
+        this.app.use(tokenCheck)
+    }
+
+    private routes(): void {
+        this.app.use(AppRoutes.routes()).use(this.router.allowedMethods());
+    }
+
+    async listen() {
+        await this.app.listen(this.port, () => {
+            console.log(`Server on port ${this.port}`)
+        })
+    }
+}
